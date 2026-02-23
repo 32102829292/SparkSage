@@ -12,6 +12,10 @@ import {
   Wand2,
   LogOut,
   BarChart2,
+  HelpCircle,
+  ShieldCheck,
+  Puzzle,
+  DollarSign,
 } from "lucide-react";
 import {
   Sidebar,
@@ -35,6 +39,13 @@ const NAV_ITEMS = [
   { title: "Analytics", href: "/dashboard/analytics", icon: BarChart2 },
 ];
 
+const MANAGE_ITEMS = [
+  { title: "FAQ", href: "/dashboard/faq", icon: HelpCircle },
+  { title: "Permissions", href: "/dashboard/permissions", icon: ShieldCheck },
+  { title: "Plugins", href: "/dashboard/plugins", icon: Puzzle },
+  { title: "Cost Tracking", href: "/dashboard/cost", icon: DollarSign },
+];
+
 export function AppSidebar() {
   const pathname = usePathname();
 
@@ -54,6 +65,23 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={pathname === item.href}>
+                    <Link href={item.href}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Manage</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {MANAGE_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname === item.href}>
                     <Link href={item.href}>
