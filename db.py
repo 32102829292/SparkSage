@@ -54,6 +54,21 @@ async def init_db():
             data         TEXT    NOT NULL DEFAULT '{}'
         );
 
+        CREATE TABLE IF NOT EXISTS analytics (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type     TEXT NOT NULL,
+            guild_id       TEXT,
+            channel_id     TEXT,
+            user_id        TEXT,
+            provider       TEXT,
+            command        TEXT,
+            input_tokens   INTEGER DEFAULT 0,
+            output_tokens  INTEGER DEFAULT 0,
+            estimated_cost REAL    DEFAULT 0.0,
+            latency_ms     INTEGER DEFAULT 0,
+            created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
+
         INSERT OR IGNORE INTO wizard_state (id) VALUES (1);
         """
     )
@@ -131,14 +146,19 @@ async def sync_env_to_db():
 
 
 async def sync_db_to_env():
-    """Write DB config back to the .env file."""
+    """Write DB config back to the .env file, preserving existing non-empty values."""
     from dotenv import dotenv_values, set_key
 
     env_path = os.path.join(os.path.dirname(__file__), ".env")
+    existing = dotenv_values(env_path)
     all_config = await get_all_config()
 
     for key, value in all_config.items():
-        set_key(env_path, key, value)
+        # Only write if value is non-empty, or key doesn't exist yet in .env
+        if value and value.strip():
+            set_key(env_path, key, value)
+        elif key not in existing:
+            set_key(env_path, key, value)
 
 
 # --- Conversation helpers ---
