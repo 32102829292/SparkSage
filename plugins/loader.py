@@ -1,4 +1,3 @@
-"""plugins/loader.py — Plugin system loader"""
 import json
 import os
 import importlib
@@ -6,6 +5,7 @@ from pathlib import Path
 
 PLUGINS_DIR = Path("plugins")
 _loaded_plugins = {}
+_disabled_plugins: set = set()
 
 
 def get_plugin_manifest(plugin_name: str) -> dict | None:
@@ -24,9 +24,18 @@ def list_plugins() -> list[dict]:
         if item.is_dir() and (item / "manifest.json").exists():
             manifest = get_plugin_manifest(item.name)
             if manifest:
-                manifest["enabled"] = item.name in _loaded_plugins
+                manifest["name"] = item.name
+                manifest["enabled"] = item.name in _loaded_plugins and item.name not in _disabled_plugins
                 plugins.append(manifest)
     return plugins
+
+
+def enable_plugin(plugin_name: str):
+    _disabled_plugins.discard(plugin_name)
+
+
+def disable_plugin(plugin_name: str):
+    _disabled_plugins.add(plugin_name)
 
 
 async def load_plugin(bot, plugin_name: str) -> bool:

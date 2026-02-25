@@ -10,7 +10,6 @@ _db: aiosqlite.Connection | None = None
 
 
 async def get_db() -> aiosqlite.Connection:
-    """Return the shared database connection, creating it if needed."""
     global _db
     if _db is None:
         _db = await aiosqlite.connect(DATABASE_PATH)
@@ -21,7 +20,6 @@ async def get_db() -> aiosqlite.Connection:
 
 
 async def init_db():
-    """Create tables if they don't exist."""
     db = await get_db()
     await db.executescript(
         """
@@ -69,6 +67,24 @@ async def init_db():
             created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS faqs (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id       TEXT NOT NULL DEFAULT 'global',
+            question       TEXT NOT NULL,
+            answer         TEXT NOT NULL,
+            match_keywords TEXT NOT NULL,
+            times_used     INTEGER DEFAULT 0,
+            created_by     TEXT,
+            created_at     TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS command_permissions (
+            command_name TEXT NOT NULL,
+            guild_id     TEXT NOT NULL,
+            role_id      TEXT NOT NULL,
+            PRIMARY KEY (command_name, guild_id, role_id)
+        );
+
         INSERT OR IGNORE INTO wizard_state (id) VALUES (1);
         """
     )
@@ -79,7 +95,6 @@ async def init_db():
 
 
 async def get_config(key: str, default: str | None = None) -> str | None:
-    """Get a config value from the database."""
     db = await get_db()
     cursor = await db.execute("SELECT value FROM config WHERE key = ?", (key,))
     row = await cursor.fetchone()
@@ -87,7 +102,6 @@ async def get_config(key: str, default: str | None = None) -> str | None:
 
 
 async def get_all_config() -> dict[str, str]:
-    """Return all config key-value pairs."""
     db = await get_db()
     cursor = await db.execute("SELECT key, value FROM config")
     rows = await cursor.fetchall()
@@ -95,7 +109,6 @@ async def get_all_config() -> dict[str, str]:
 
 
 async def set_config(key: str, value: str):
-    """Set a config value in the database."""
     db = await get_db()
     await db.execute(
         "INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -105,7 +118,6 @@ async def set_config(key: str, value: str):
 
 
 async def set_config_bulk(data: dict[str, str]):
-    """Set multiple config values at once."""
     db = await get_db()
     await db.executemany(
         "INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -115,7 +127,6 @@ async def set_config_bulk(data: dict[str, str]):
 
 
 async def sync_env_to_db():
-    """Seed the DB config table from current environment / .env values."""
     import config as cfg
 
     env_keys = {
@@ -135,7 +146,6 @@ async def sync_env_to_db():
         "MAX_TOKENS": str(cfg.MAX_TOKENS),
         "SYSTEM_PROMPT": cfg.SYSTEM_PROMPT,
     }
-    # Only insert keys that don't already exist in DB (don't overwrite user edits)
     db = await get_db()
     for key, value in env_keys.items():
         await db.execute(
@@ -146,7 +156,6 @@ async def sync_env_to_db():
 
 
 async def sync_db_to_env():
-    """Write DB config back to the .env file, preserving existing non-empty values."""
     from dotenv import dotenv_values, set_key
 
     env_path = os.path.join(os.path.dirname(__file__), ".env")
@@ -154,7 +163,6 @@ async def sync_db_to_env():
     all_config = await get_all_config()
 
     for key, value in all_config.items():
-        # Only write if value is non-empty, or key doesn't exist yet in .env
         if value and value.strip():
             set_key(env_path, key, value)
         elif key not in existing:
@@ -165,7 +173,6 @@ async def sync_db_to_env():
 
 
 async def add_message(channel_id: str, role: str, content: str, provider: str | None = None):
-    """Add a message to conversation history."""
     db = await get_db()
     await db.execute(
         "INSERT INTO conversations (channel_id, role, content, provider) VALUES (?, ?, ?, ?)",
@@ -175,7 +182,6 @@ async def add_message(channel_id: str, role: str, content: str, provider: str | 
 
 
 async def get_messages(channel_id: str, limit: int = 20) -> list[dict]:
-    """Get recent messages for a channel."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT role, content, provider, created_at FROM conversations WHERE channel_id = ? ORDER BY id DESC LIMIT ?",
@@ -186,14 +192,12 @@ async def get_messages(channel_id: str, limit: int = 20) -> list[dict]:
 
 
 async def clear_messages(channel_id: str):
-    """Delete all messages for a channel."""
     db = await get_db()
     await db.execute("DELETE FROM conversations WHERE channel_id = ?", (channel_id,))
     await db.commit()
 
 
 async def list_channels() -> list[dict]:
-    """List all channels with message counts."""
     db = await get_db()
     cursor = await db.execute(
         """
@@ -211,7 +215,6 @@ async def list_channels() -> list[dict]:
 
 
 async def get_wizard_state() -> dict:
-    """Get the wizard state."""
     db = await get_db()
     cursor = await db.execute("SELECT completed, current_step, data FROM wizard_state WHERE id = 1")
     row = await cursor.fetchone()
@@ -223,7 +226,6 @@ async def get_wizard_state() -> dict:
 
 
 async def set_wizard_state(completed: bool | None = None, current_step: int | None = None, data: dict | None = None):
-    """Update wizard state fields."""
     db = await get_db()
     updates = []
     params = []
@@ -245,7 +247,6 @@ async def set_wizard_state(completed: bool | None = None, current_step: int | No
 
 
 async def create_session(token: str, user_id: str, expires_at: str):
-    """Store a session token."""
     db = await get_db()
     await db.execute(
         "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
@@ -255,7 +256,6 @@ async def create_session(token: str, user_id: str, expires_at: str):
 
 
 async def validate_session(token: str) -> dict | None:
-    """Validate a session token, return session data or None."""
     db = await get_db()
     cursor = await db.execute(
         "SELECT user_id, expires_at FROM sessions WHERE token = ? AND expires_at > datetime('now')",
@@ -266,14 +266,166 @@ async def validate_session(token: str) -> dict | None:
 
 
 async def delete_session(token: str):
-    """Delete a session."""
     db = await get_db()
     await db.execute("DELETE FROM sessions WHERE token = ?", (token,))
     await db.commit()
 
 
+# --- FAQ helpers ---
+
+
+async def get_faqs(guild_id: str | None = None) -> list[dict]:
+    db = await get_db()
+    if guild_id:
+        cursor = await db.execute(
+            "SELECT * FROM faqs WHERE guild_id = ? ORDER BY id DESC", (guild_id,)
+        )
+    else:
+        cursor = await db.execute("SELECT * FROM faqs ORDER BY id DESC")
+    rows = await cursor.fetchall()
+    return [dict(row) for row in rows]
+
+
+async def create_faq(question: str, answer: str, match_keywords: str, guild_id: str = "global", created_by: str | None = None) -> int:
+    db = await get_db()
+    cursor = await db.execute(
+        "INSERT INTO faqs (guild_id, question, answer, match_keywords, created_by) VALUES (?, ?, ?, ?, ?)",
+        (guild_id, question, answer, match_keywords, created_by),
+    )
+    await db.commit()
+    return cursor.lastrowid
+
+
+async def delete_faq(faq_id: int):
+    db = await get_db()
+    await db.execute("DELETE FROM faqs WHERE id = ?", (faq_id,))
+    await db.commit()
+
+
+async def increment_faq_usage(faq_id: int):
+    db = await get_db()
+    await db.execute("UPDATE faqs SET times_used = times_used + 1 WHERE id = ?", (faq_id,))
+    await db.commit()
+
+
+# --- Permission helpers ---
+
+
+async def get_permissions() -> list[dict]:
+    db = await get_db()
+    cursor = await db.execute("SELECT command_name, guild_id, role_id FROM command_permissions")
+    rows = await cursor.fetchall()
+    return [dict(row) for row in rows]
+
+
+async def add_permission(command_name: str, guild_id: str, role_id: str):
+    db = await get_db()
+    await db.execute(
+        "INSERT OR IGNORE INTO command_permissions (command_name, guild_id, role_id) VALUES (?, ?, ?)",
+        (command_name, guild_id, role_id),
+    )
+    await db.commit()
+
+
+async def remove_permission(command_name: str, guild_id: str, role_id: str):
+    db = await get_db()
+    await db.execute(
+        "DELETE FROM command_permissions WHERE command_name = ? AND guild_id = ? AND role_id = ?",
+        (command_name, guild_id, role_id),
+    )
+    await db.commit()
+
+
+async def get_command_roles(command_name: str, guild_id: str) -> list[str]:
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT role_id FROM command_permissions WHERE command_name = ? AND guild_id = ?",
+        (command_name, guild_id),
+    )
+    rows = await cursor.fetchall()
+    return [row["role_id"] for row in rows]
+
+
+# --- Analytics cost helpers ---
+
+
+async def get_cost_summary(period: str = "30d") -> dict:
+    db = await get_db()
+
+    if period == "7d":
+        since = "datetime('now', '-7 days')"
+    elif period == "all":
+        since = "datetime('1970-01-01')"
+    else:
+        since = "datetime('now', '-30 days')"
+
+    cursor = await db.execute(
+        f"""
+        SELECT
+            COALESCE(SUM(estimated_cost), 0) as total_cost,
+            COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+            COALESCE(SUM(output_tokens), 0) as total_output_tokens
+        FROM analytics
+        WHERE created_at >= {since}
+        """
+    )
+    row = await cursor.fetchone()
+    totals = dict(row)
+
+    cursor = await db.execute(
+        f"""
+        SELECT provider as name,
+               COALESCE(SUM(estimated_cost), 0) as cost,
+               COALESCE(SUM(input_tokens), 0) as input_tokens,
+               COALESCE(SUM(output_tokens), 0) as output_tokens
+        FROM analytics
+        WHERE created_at >= {since} AND provider IS NOT NULL
+        GROUP BY provider
+        ORDER BY cost DESC
+        """
+    )
+    rows = await cursor.fetchall()
+    by_provider = [dict(r) for r in rows]
+
+    cursor = await db.execute(
+        f"""
+        SELECT DATE(created_at) as date,
+               COALESCE(SUM(estimated_cost), 0) as cost
+        FROM analytics
+        WHERE created_at >= {since}
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+        """
+    )
+    rows = await cursor.fetchall()
+    daily = [dict(r) for r in rows]
+
+    projected = (totals["total_cost"] / max(len(daily), 1)) * 30 if daily else 0
+
+    return {
+        "total_cost": totals["total_cost"],
+        "projected_monthly": projected,
+        "total_input_tokens": totals["total_input_tokens"],
+        "total_output_tokens": totals["total_output_tokens"],
+        "by_provider": by_provider,
+        "daily": daily,
+    }
+
+
+# --- Stats helper ---
+
+
+async def get_total_messages() -> int:
+    db = await get_db()
+    cursor = await db.execute("SELECT COUNT(*) as count FROM conversations")
+    row = await cursor.fetchone()
+    return row["count"] if row else 0
+
+
+# --- Close ---
+
+
 async def close_db():
-    """Close the database connection."""
     global _db
     if _db:
         await _db.close()
