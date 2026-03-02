@@ -14,6 +14,7 @@ import {
   BarChart2,
   HelpCircle,
   ShieldCheck,
+  ShieldAlert,
   Puzzle,
   DollarSign,
   Terminal,
@@ -34,20 +35,21 @@ import {
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
-  { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Providers", href: "/dashboard/providers", icon: Cpu },
-  { title: "Settings", href: "/dashboard/settings", icon: Settings },
+  { title: "Overview",      href: "/dashboard",               icon: LayoutDashboard },
+  { title: "Providers",     href: "/dashboard/providers",     icon: Cpu },
+  { title: "Settings",      href: "/dashboard/settings",      icon: Settings },
   { title: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
-  { title: "Analytics", href: "/dashboard/analytics", icon: BarChart2 },
+  { title: "Analytics",     href: "/dashboard/analytics",     icon: BarChart2 },
 ];
 
 const MANAGE_ITEMS = [
-  { title: "FAQ", href: "/dashboard/faq", icon: HelpCircle },
-  { title: "Permissions", href: "/dashboard/permissions", icon: ShieldCheck },
-  { title: "Plugins", href: "/dashboard/plugins", icon: Puzzle },
-  { title: "Cost Tracking", href: "/dashboard/cost", icon: DollarSign },
+  { title: "FAQ",             href: "/dashboard/faq",             icon: HelpCircle },
+  { title: "Permissions",     href: "/dashboard/permissions",     icon: ShieldCheck },
+  { title: "Moderation",      href: "/dashboard/moderation",      icon: ShieldAlert },
+  { title: "Plugins",         href: "/dashboard/plugins",         icon: Puzzle },
+  { title: "Cost Tracking",   href: "/dashboard/cost",            icon: DollarSign },
   { title: "Custom Commands", href: "/dashboard/custom-commands", icon: Terminal },
-  { title: "Daily Digest", href: "/dashboard/digest", icon: Newspaper },
+  { title: "Daily Digest",    href: "/dashboard/digest",          icon: Newspaper },
 ];
 
 export function AppSidebar() {
@@ -63,6 +65,7 @@ export function AppSidebar() {
           <span className="font-semibold">SparkSage</span>
         </div>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
@@ -81,6 +84,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel>Manage</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -98,6 +102,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel>Tools</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -114,6 +119,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
         <Button
           variant="ghost"

@@ -1,7 +1,21 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import auth, config, providers, bot, conversations, wizard, analytics, faqs, permissions, plugins, custom_commands, digest
+from api.routes import (
+    auth,
+    config,
+    providers,
+    bot,
+    conversations,
+    wizard,
+    analytics,
+    faqs,
+    permissions,
+    plugins,
+    custom_commands,
+    digest,
+    moderation,
+)
 import db
 
 
@@ -24,18 +38,19 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-    app.include_router(config.router, prefix="/api/config", tags=["config"])
-    app.include_router(providers.router, prefix="/api/providers", tags=["providers"])
-    app.include_router(bot.router, prefix="/api/bot", tags=["bot"])
-    app.include_router(conversations.router, prefix="/api/conversations", tags=["conversations"])
-    app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
-    app.include_router(wizard.router, prefix="/api/wizard", tags=["wizard"])
-    app.include_router(faqs.router, prefix="/api/faqs", tags=["faqs"])
-    app.include_router(permissions.router, prefix="/api/permissions", tags=["permissions"])
-    app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
+    app.include_router(auth.router,            prefix="/api/auth",            tags=["auth"])
+    app.include_router(config.router,          prefix="/api/config",          tags=["config"])
+    app.include_router(providers.router,       prefix="/api/providers",       tags=["providers"])
+    app.include_router(bot.router,             prefix="/api/bot",             tags=["bot"])
+    app.include_router(conversations.router,   prefix="/api/conversations",   tags=["conversations"])
+    app.include_router(analytics.router,       prefix="/api/analytics",       tags=["analytics"])
+    app.include_router(wizard.router,          prefix="/api/wizard",          tags=["wizard"])
+    app.include_router(faqs.router,            prefix="/api/faqs",            tags=["faqs"])
+    app.include_router(permissions.router,     prefix="/api/permissions",     tags=["permissions"])
+    app.include_router(plugins.router,         prefix="/api/plugins",         tags=["plugins"])
     app.include_router(custom_commands.router, prefix="/api/custom-commands", tags=["custom-commands"])
-    app.include_router(digest.router, prefix="/api/digest", tags=["digest"])
+    app.include_router(digest.router,          prefix="/api/digest",          tags=["digest"])
+    app.include_router(moderation.router,      prefix="/api/moderation",      tags=["moderation"])
 
     @app.get("/api/health")
     async def health():

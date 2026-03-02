@@ -26,7 +26,7 @@ export default function DigestPage() {
       .then((r) => r.json())
       .then((d) => {
         setEnabled(d.enabled);
-        setChannelId(d.channel_id || "");
+        setChannelId(d.channel_id ?? "");
       })
       .catch(() => setError("Failed to load digest settings."))
       .finally(() => setLoading(false));
@@ -64,12 +64,12 @@ export default function DigestPage() {
         </div>
       </div>
 
-      {/* How it works */}
       <Card className="border-indigo-200 bg-indigo-50 dark:bg-indigo-950 dark:border-indigo-800">
         <CardContent className="pt-4 pb-4">
           <p className="text-sm font-medium text-indigo-800 dark:text-indigo-200">How it works</p>
           <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
-            Every 24 hours, SparkSage collects all bot conversations from the past day, uses AI to summarize the key topics, and posts a formatted digest to your chosen channel. Use <span className="font-mono font-bold">/digest now</span> in Discord to trigger it immediately.
+            Every 24 hours, SparkSage collects all bot conversations from the past day, uses AI to summarize the key topics, and posts a formatted digest to your chosen channel. Use{" "}
+            <span className="font-mono font-bold">/digest now</span> in Discord to trigger it immediately.
           </p>
         </CardContent>
       </Card>
@@ -83,7 +83,6 @@ export default function DigestPage() {
           </CardHeader>
           <CardContent className="space-y-4">
 
-            {/* Enable toggle */}
             <div className="flex items-center justify-between rounded-lg border px-4 py-3">
               <div>
                 <p className="text-sm font-medium">Enable Daily Digest</p>
@@ -103,22 +102,19 @@ export default function DigestPage() {
               </button>
             </div>
 
-            {/* Channel ID input */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Discord Channel ID</label>
               <p className="text-xs text-muted-foreground">
                 Right-click a channel in Discord → Copy Channel ID (enable Developer Mode first)
               </p>
               <input
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="e.g. 1234567890123456789"
                 value={channelId}
-                disabled={!enabled}
                 onChange={(e) => setChannelId(e.target.value.trim())}
               />
             </div>
 
-            {/* Discord commands reference */}
             <div className="rounded-lg border bg-muted/50 px-4 py-3 space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Discord Commands</p>
               <div className="space-y-1">

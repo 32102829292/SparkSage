@@ -57,6 +57,8 @@ async def on_ready():
         "cogs.translate",
         "cogs.analytics",
         "cogs.custom_commands",
+        "cogs.digest",
+        "cogs.moderation",
     ]
 
     for cog in cogs:
