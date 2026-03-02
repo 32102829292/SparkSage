@@ -25,8 +25,31 @@ async def get_history(channel_id: int) -> list[dict]:
 async def ask_ai(channel_id: int, user_name: str, message: str) -> tuple[str, str]:
     await database.add_message(str(channel_id), "user", f"{user_name}: {message}")
     history = await get_history(channel_id)
+    
     try:
-        response, provider_name = providers.chat(history, config.SYSTEM_PROMPT)
+        # Check for channel-specific provider override
+        channel_provider = await database.get_channel_provider(str(channel_id))
+        
+        # Check for channel-specific prompt override
+        channel_prompt = await database.get_channel_prompt(str(channel_id))
+        system_prompt = channel_prompt if channel_prompt else config.SYSTEM_PROMPT
+        
+        # Use channel provider if available, otherwise use default fallback
+        if channel_provider:
+            # Try to use the specific provider first
+            try:
+                response = providers.call_provider(
+                    channel_provider, history, system_prompt
+                )
+                provider_name = channel_provider
+            except Exception as e:
+                logger.warning(f"Channel provider {channel_provider} failed: {e}")
+                # Fall back to normal chain
+                response, provider_name = providers.chat(history, system_prompt)
+        else:
+            # Use normal fallback chain
+            response, provider_name = providers.chat(history, system_prompt)
+        
         await database.add_message(str(channel_id), "assistant", response, provider=provider_name)
         return response, provider_name
     except RuntimeError as e:
@@ -90,7 +113,21 @@ class General(commands.Cog):
         primary = config.AI_PROVIDER
         provider_info = config.PROVIDERS.get(primary, {})
         available = providers.get_available_providers()
+        
+        # Check if this channel has a provider override
+        channel_provider = await database.get_channel_provider(str(interaction.channel_id))
+        
         embed = discord.Embed(title="🤖 AI Provider Status", color=discord.Color.blue())
+        
+        if channel_provider:
+            # Show channel override
+            override_info = config.PROVIDERS.get(channel_provider, {})
+            embed.add_field(
+                name="📌 Channel Override",
+                value=f"**{override_info.get('name', channel_provider)}** (this channel only)",
+                inline=False
+            )
+        
         embed.add_field(
             name="Current Provider",
             value=f"**{provider_info.get('name', primary)}**\nModel: `{provider_info.get('model', '?')}`",
@@ -102,6 +139,7 @@ class General(commands.Cog):
             inline=True
         )
         embed.add_field(name="Fallback Chain", value=" → ".join(available), inline=True)
+        
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="ping", description="Check the bot's latency")

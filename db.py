@@ -98,6 +98,20 @@ async def init_db():
             UNIQUE(guild_id, name)
         );
 
+        -- Channel Prompts table
+        CREATE TABLE IF NOT EXISTS channel_prompts (
+            channel_id TEXT PRIMARY KEY,
+            guild_id TEXT NOT NULL,
+            system_prompt TEXT NOT NULL
+        );
+
+        -- Channel Providers table
+        CREATE TABLE IF NOT EXISTS channel_providers (
+            channel_id TEXT PRIMARY KEY,
+            guild_id TEXT NOT NULL,
+            provider TEXT NOT NULL
+        );
+
         INSERT OR IGNORE INTO wizard_state (id) VALUES (1);
         """
     )
@@ -397,6 +411,92 @@ async def increment_custom_command_usage(command_id: int):
     )
     await db.commit()
 
+
+# ===== Channel Prompts Functions =====
+
+async def get_channel_prompt(channel_id: str) -> str | None:
+    """Get custom prompt for a specific channel"""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT system_prompt FROM channel_prompts WHERE channel_id = ?",
+        (channel_id,)
+    )
+    row = await cursor.fetchone()
+    return row["system_prompt"] if row else None
+
+
+async def set_channel_prompt(channel_id: str, guild_id: str, prompt: str):
+    """Set or update a channel prompt"""
+    db = await get_db()
+    await db.execute(
+        """INSERT OR REPLACE INTO channel_prompts (channel_id, guild_id, system_prompt) 
+           VALUES (?, ?, ?)""",
+        (channel_id, guild_id, prompt)
+    )
+    await db.commit()
+
+
+async def delete_channel_prompt(channel_id: str):
+    """Remove custom prompt from a channel"""
+    db = await get_db()
+    await db.execute("DELETE FROM channel_prompts WHERE channel_id = ?", (channel_id,))
+    await db.commit()
+
+
+async def get_guild_channel_prompts(guild_id: str) -> list[dict]:
+    """Get all custom prompts for a guild"""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT channel_id, system_prompt FROM channel_prompts WHERE guild_id = ?",
+        (guild_id,)
+    )
+    rows = await cursor.fetchall()
+    return [{"channel_id": row["channel_id"], "system_prompt": row["system_prompt"]} for row in rows]
+
+
+# ===== Channel Providers Functions =====
+
+async def get_channel_provider(channel_id: str) -> str | None:
+    """Get provider override for a specific channel"""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT provider FROM channel_providers WHERE channel_id = ?",
+        (channel_id,)
+    )
+    row = await cursor.fetchone()
+    return row["provider"] if row else None
+
+
+async def set_channel_provider(channel_id: str, guild_id: str, provider: str):
+    """Set or update a channel provider override"""
+    db = await get_db()
+    await db.execute(
+        """INSERT OR REPLACE INTO channel_providers (channel_id, guild_id, provider) 
+           VALUES (?, ?, ?)""",
+        (channel_id, guild_id, provider)
+    )
+    await db.commit()
+
+
+async def delete_channel_provider(channel_id: str):
+    """Remove provider override from a channel"""
+    db = await get_db()
+    await db.execute("DELETE FROM channel_providers WHERE channel_id = ?", (channel_id,))
+    await db.commit()
+
+
+async def get_guild_channel_providers(guild_id: str) -> list[dict]:
+    """Get all provider overrides for a guild"""
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT channel_id, provider FROM channel_providers WHERE guild_id = ?",
+        (guild_id,)
+    )
+    rows = await cursor.fetchall()
+    return [{"channel_id": row["channel_id"], "provider": row["provider"]} for row in rows]
+
+
+# ===== Analytics Functions =====
 
 async def get_cost_summary(period: str = "30d") -> dict:
     db = await get_db()

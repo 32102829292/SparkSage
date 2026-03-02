@@ -19,6 +19,8 @@ import {
   DollarSign,
   Terminal,
   Newspaper,
+  MessageCircle,
+  GitFork,
 } from "lucide-react";
 import {
   Sidebar,
@@ -43,6 +45,8 @@ const NAV_ITEMS = [
 ];
 
 const MANAGE_ITEMS = [
+  { title: "Channel Prompts", href: "/dashboard/channel-prompts", icon: MessageCircle }, // NEW
+  { title: "Channel Providers", href: "/dashboard/channel-providers", icon: GitFork }, // NEW
   { title: "FAQ",             href: "/dashboard/faq",             icon: HelpCircle },
   { title: "Permissions",     href: "/dashboard/permissions",     icon: ShieldCheck },
   { title: "Moderation",      href: "/dashboard/moderation",      icon: ShieldAlert },

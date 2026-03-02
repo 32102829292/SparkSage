@@ -59,6 +59,8 @@ async def on_ready():
         "cogs.custom_commands",
         "cogs.digest",
         "cogs.moderation",
+        "cogs.channel_prompts",
+        "cogs.channel_providers",
     ]
 
     for cog in cogs:

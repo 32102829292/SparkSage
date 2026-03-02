@@ -15,6 +15,8 @@ from api.routes import (
     custom_commands,
     digest,
     moderation,
+    channel_prompts,
+    channel_providers,
 )
 import db
 
@@ -51,7 +53,8 @@ def create_app() -> FastAPI:
     app.include_router(custom_commands.router, prefix="/api/custom-commands", tags=["custom-commands"])
     app.include_router(digest.router,          prefix="/api/digest",          tags=["digest"])
     app.include_router(moderation.router,      prefix="/api/moderation",      tags=["moderation"])
-
+    app.include_router(channel_prompts.router, prefix="/api/channel-prompts", tags=["channel-prompts"])
+    app.include_router(channel_providers.router, prefix="/api/channel-providers", tags=["channel-providers"])
     @app.get("/api/health")
     async def health():
         return {"status": "ok"}
