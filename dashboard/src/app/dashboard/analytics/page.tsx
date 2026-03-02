@@ -31,7 +31,16 @@ import {
   AlertCircle
 } from "lucide-react";
 
-const COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899"];
+// Theme-aware colors using CSS variables
+const COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+  "hsl(var(--destructive))",
+  "hsl(var(--chart-7))",
+];
 
 interface AnalyticsStats {
   total_messages: number;
@@ -58,7 +67,6 @@ export default function AnalyticsPage() {
   
   const token = (session as { accessToken?: string })?.accessToken;
 
-  // Fetch analytics data
   const fetchAnalytics = useCallback(async (showRefreshingState = false) => {
     if (!token) return null;
 
@@ -95,7 +103,6 @@ export default function AnalyticsPage() {
     }
   }, [token, period]);
 
-  // Initial data fetch
   useEffect(() => {
     if (status === "loading") return;
     if (!token) {
@@ -106,7 +113,6 @@ export default function AnalyticsPage() {
     fetchAnalytics();
   }, [token, period, status, fetchAnalytics]);
 
-  // Auto-refresh polling
   useEffect(() => {
     if (!autoRefresh || !token) {
       if (pollingIntervalRef.current) {
@@ -116,7 +122,6 @@ export default function AnalyticsPage() {
       return;
     }
 
-    // Poll every 30 seconds when auto-refresh is enabled
     pollingIntervalRef.current = setInterval(() => {
       fetchAnalytics(true);
     }, 30000);
@@ -137,7 +142,6 @@ export default function AnalyticsPage() {
     setAutoRefresh(prev => !prev);
   }, []);
 
-  // Prepare chart data
   const providerData = stats?.by_provider
     ? Object.entries(stats.by_provider).map(([name, count]) => ({
         name,
@@ -149,12 +153,10 @@ export default function AnalyticsPage() {
   const hourlyData = stats?.hourly ?? [];
   const topChannels = stats?.top_channels ?? [];
 
-  // Calculate derived metrics
   const responseRate = stats?.total_messages 
     ? Math.round((stats.total_responses / stats.total_messages) * 100) 
     : 0;
 
-  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -163,7 +165,6 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Unauthenticated state
   if (status === "unauthenticated") {
     return (
       <Card className="border-destructive max-w-2xl mx-auto">
@@ -187,14 +188,13 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
+          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
           <p className="text-sm text-muted-foreground">
             Metrics and insights from your Discord bot
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Auto-refresh toggle */}
           <Button
             variant={autoRefresh ? "default" : "outline"}
             size="sm"
@@ -205,7 +205,6 @@ export default function AnalyticsPage() {
             {autoRefresh ? 'Auto (30s)' : 'Manual'}
           </Button>
 
-          {/* Manual refresh button */}
           <Button
             variant="outline"
             size="sm"
@@ -216,11 +215,10 @@ export default function AnalyticsPage() {
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
 
-          {/* Period select */}
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="bg-background text-foreground border border-input rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="today">Today</option>
             <option value="7d">7 days</option>
@@ -230,7 +228,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Last updated */}
       {lastUpdated && (
         <p className="text-xs text-muted-foreground">
           Last updated: {lastUpdated.toLocaleTimeString()}
@@ -262,25 +259,25 @@ export default function AnalyticsPage() {
                 label: "Total Messages", 
                 value: stats.total_messages,
                 icon: MessageSquare,
-                color: "text-blue-500"
+                color: "text-primary"
               },
               { 
                 label: "AI Responses", 
                 value: stats.total_responses,
                 icon: Zap,
-                color: "text-purple-500"
+                color: "text-purple-500 dark:text-purple-400"
               },
               { 
                 label: "Avg Latency", 
                 value: `${stats.avg_latency_ms}ms`,
                 icon: Clock,
-                color: "text-green-500"
+                color: "text-cyan-500 dark:text-cyan-400"
               },
               { 
                 label: "Active Channels", 
                 value: stats.active_channels,
                 icon: Hash,
-                color: "text-orange-500"
+                color: "text-emerald-500 dark:text-emerald-400"
               },
             ].map(({ label, value, icon: Icon, color }) => (
               <Card key={label}>
@@ -289,7 +286,7 @@ export default function AnalyticsPage() {
                     <p className="text-xs text-muted-foreground">{label}</p>
                     <Icon className={`h-4 w-4 ${color}`} />
                   </div>
-                  <p className="text-2xl font-bold mt-1">{value}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
                 </CardContent>
               </Card>
             ))}
@@ -301,9 +298,9 @@ export default function AnalyticsPage() {
               <CardContent className="pt-5">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">Response Rate</p>
-                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  <TrendingUp className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
                 </div>
-                <p className="text-2xl font-bold mt-1">{responseRate}%</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{responseRate}%</p>
               </CardContent>
             </Card>
           </div>
@@ -312,21 +309,46 @@ export default function AnalyticsPage() {
           {dailyData.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">
+                <CardTitle className="text-sm text-foreground font-medium">
                   Messages Per Day
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={dailyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="hsl(var(--border))" 
+                    />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                    />
+                    <YAxis 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))',
+                        borderColor: 'hsl(var(--border))',
+                        color: 'hsl(var(--foreground))',
+                        borderRadius: '0.5rem'
+                      }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
+                    />
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#6366f1"
+                      stroke="hsl(var(--primary))"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -340,20 +362,45 @@ export default function AnalyticsPage() {
           {hourlyData.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">
+                <CardTitle className="text-sm text-foreground font-medium">
                   Hourly Activity
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={hourlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="hsl(var(--border))" 
+                    />
+                    <XAxis 
+                      dataKey="hour" 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                    />
+                    <YAxis 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))',
+                        borderColor: 'hsl(var(--border))',
+                        color: 'hsl(var(--foreground))',
+                        borderRadius: '0.5rem'
+                      }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
+                    />
                     <Bar
                       dataKey="count"
-                      fill="#8b5cf6"
+                      fill="hsl(var(--chart-2))"
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
@@ -368,7 +415,7 @@ export default function AnalyticsPage() {
               {/* Pie Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">
+                  <CardTitle className="text-sm text-foreground font-medium">
                     Provider Distribution
                   </CardTitle>
                 </CardHeader>
@@ -380,9 +427,23 @@ export default function AnalyticsPage() {
                         dataKey="count"
                         nameKey="name"
                         outerRadius={80}
-                        label={({ name, percent = 0 }) => 
-                          `${name} ${(percent * 100).toFixed(0)}%`
-                        }
+                        label={({ name, percent = 0, x, y }) => (
+                          <text 
+                            x={x} 
+                            y={y} 
+                            fill="hsl(var(--foreground))"
+                            fontSize={12}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            className="text-xs font-medium"
+                          >
+                            {`${name} ${(percent * 100).toFixed(0)}%`}
+                          </text>
+                        )}
+                        labelLine={{ 
+                          stroke: 'hsl(var(--muted-foreground))',
+                          strokeWidth: 1
+                        }}
                       >
                         {providerData.map((_, i) => (
                           <Cell
@@ -391,7 +452,16 @@ export default function AnalyticsPage() {
                           />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--background))',
+                          borderColor: 'hsl(var(--border))',
+                          color: 'hsl(var(--foreground))',
+                          borderRadius: '0.5rem'
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        itemStyle={{ color: 'hsl(var(--foreground))' }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -400,20 +470,45 @@ export default function AnalyticsPage() {
               {/* Bar Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">
+                  <CardTitle className="text-sm text-foreground font-medium">
                     Requests by Provider
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={providerData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip />
+                      <CartesianGrid 
+                        strokeDasharray="3 3" 
+                        stroke="hsl(var(--border))" 
+                      />
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ 
+                          fontSize: 11, 
+                          fill: 'hsl(var(--foreground))'
+                        }}
+                        stroke="hsl(var(--border))"
+                      />
+                      <YAxis 
+                        tick={{ 
+                          fontSize: 11, 
+                          fill: 'hsl(var(--foreground))'
+                        }}
+                        stroke="hsl(var(--border))"
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--background))',
+                          borderColor: 'hsl(var(--border))',
+                          color: 'hsl(var(--foreground))',
+                          borderRadius: '0.5rem'
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        itemStyle={{ color: 'hsl(var(--foreground))' }}
+                      />
                       <Bar
                         dataKey="count"
-                        fill="#6366f1"
+                        fill="hsl(var(--primary))"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
@@ -427,7 +522,7 @@ export default function AnalyticsPage() {
           {topChannels.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">
+                <CardTitle className="text-sm text-foreground font-medium">
                   Top Active Channels
                 </CardTitle>
               </CardHeader>
@@ -435,11 +530,11 @@ export default function AnalyticsPage() {
                 <div className="space-y-2">
                   {topChannels.map((channel, i) => (
                     <div key={i} className="flex items-center justify-between">
-                      <span className="text-sm">#{channel.name}</span>
+                      <span className="text-sm text-foreground">#{channel.name}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{channel.count}</span>
+                        <span className="text-sm font-medium text-foreground">{channel.count}</span>
                         <div 
-                          className="h-2 bg-indigo-500 rounded-full"
+                          className="h-2 bg-primary rounded-full"
                           style={{ 
                             width: `${(channel.count / Math.max(...topChannels.map(c => c.count))) * 100}px`,
                             maxWidth: '200px'
