@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   Puzzle,
   DollarSign,
+  Terminal,
+  Newspaper,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,6 +46,8 @@ const MANAGE_ITEMS = [
   { title: "Permissions", href: "/dashboard/permissions", icon: ShieldCheck },
   { title: "Plugins", href: "/dashboard/plugins", icon: Puzzle },
   { title: "Cost Tracking", href: "/dashboard/cost", icon: DollarSign },
+  { title: "Custom Commands", href: "/dashboard/custom-commands", icon: Terminal },
+  { title: "Daily Digest", href: "/dashboard/digest", icon: Newspaper },
 ];
 
 export function AppSidebar() {

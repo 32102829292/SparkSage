@@ -1,8 +1,7 @@
 """cogs/digest.py — Daily digest scheduler"""
 import discord
 from discord import app_commands
-from discord.ext import commands
-from discord.ext import tasks
+from discord.ext import commands, tasks
 import aiosqlite
 import os
 import providers
@@ -14,8 +13,17 @@ DB_PATH = os.getenv("DATABASE_PATH", "sparksage.db")
 async def get_setting(key):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        row = await db.execute_fetchone("SELECT value FROM config WHERE key=?", (key,))
-        return row["value"] if row else None
+        async with db.execute("SELECT value FROM config WHERE key=?", (key,)) as cur:
+            row = await cur.fetchone()
+            return row["value"] if row else None
+
+
+async def set_setting(key, value):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", (key, value)
+        )
+        await db.commit()
 
 
 class Digest(commands.Cog):
@@ -40,24 +48,33 @@ class Digest(commands.Cog):
         if not channel:
             return
 
-        # Get messages from past 24h
+        # Get messages from past 24h from conversations table
         cutoff = (datetime.utcnow() - timedelta(hours=24)).isoformat()
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
-            rows = await db.execute_fetchall(
-                "SELECT role, content FROM messages WHERE created_at >= ? ORDER BY created_at",
+            async with db.execute(
+                "SELECT role, content FROM conversations WHERE created_at >= ? ORDER BY created_at",
                 (cutoff,)
-            )
+            ) as cur:
+                rows = await cur.fetchall()
 
         if not rows:
+            await channel.send("📰 No activity in the past 24 hours to summarize.")
             return
 
-        conversation = "\n".join(f"{r['role'].upper()}: {r['content'][:200]}" for r in rows[:50])
-        system = "You are a helpful summarizer. Create a concise daily digest of the AI assistant conversations. Use bullet points. Highlight key topics discussed."
+        conversation = "\n".join(
+            f"{r['role'].upper()}: {r['content'][:200]}" for r in rows[:50]
+        )
+        system = (
+            "You are a helpful summarizer. Create a concise daily digest of AI assistant "
+            "conversations. Use bullet points. Highlight key topics discussed."
+        )
         user_msg = f"Summarize these conversations from the past 24 hours:\n\n{conversation}"
 
         try:
-            summary, provider_name = providers.chat([{"role": "user", "content": user_msg}], system)
+            summary, provider_name = await providers.chat(
+                [{"role": "user", "content": user_msg}], system
+            )
         except Exception as e:
             summary = f"Could not generate digest: {e}"
 
@@ -65,7 +82,7 @@ class Digest(commands.Cog):
             title=f"📰 Daily Digest — {datetime.utcnow().strftime('%B %d, %Y')}",
             description=summary[:4000],
             color=discord.Color.gold(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
         embed.set_footer(text="SparkSage Daily Digest")
         await channel.send(embed=embed)
@@ -80,11 +97,12 @@ class Digest(commands.Cog):
     @app_commands.describe(channel="Channel to post daily digest")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def digest_setup(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute("INSERT OR REPLACE INTO config (key,value) VALUES (?,?)", ("digest_channel_id", str(channel.id)))
-            await db.execute("INSERT OR REPLACE INTO config (key,value) VALUES (?,?)", ("digest_enabled", "true"))
-            await db.commit()
-        await interaction.response.send_message(f"✅ Daily digest will be posted to {channel.mention} every 24 hours.", ephemeral=True)
+        await set_setting("digest_channel_id", str(channel.id))
+        await set_setting("digest_enabled", "true")
+        await interaction.response.send_message(
+            f"✅ Daily digest will be posted to {channel.mention} every 24 hours.",
+            ephemeral=True,
+        )
 
     @digest_group.command(name="now", description="[Admin] Post a digest right now")
     @app_commands.checks.has_permissions(manage_guild=True)
@@ -96,10 +114,19 @@ class Digest(commands.Cog):
     @digest_group.command(name="disable", description="[Admin] Disable daily digest")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def digest_disable(self, interaction: discord.Interaction):
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute("INSERT OR REPLACE INTO config (key,value) VALUES (?,?)", ("digest_enabled", "false"))
-            await db.commit()
+        await set_setting("digest_enabled", "false")
         await interaction.response.send_message("✅ Daily digest disabled.", ephemeral=True)
+
+    @digest_group.command(name="status", description="Check digest configuration")
+    async def digest_status(self, interaction: discord.Interaction):
+        enabled = await get_setting("digest_enabled")
+        channel_id = await get_setting("digest_channel_id")
+        channel = self.bot.get_channel(int(channel_id)) if channel_id else None
+        status = "✅ Enabled" if enabled == "true" else "❌ Disabled"
+        ch = channel.mention if channel else "Not set"
+        await interaction.response.send_message(
+            f"**Digest Status:** {status}\n**Channel:** {ch}", ephemeral=True
+        )
 
 
 async def setup(bot):

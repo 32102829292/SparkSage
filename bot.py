@@ -34,7 +34,6 @@ def get_bot_status() -> dict:
             }
     except Exception as e:
         logger.error(f"Error getting bot status: {e}")
-
     return {"online": False, "username": None, "latency_ms": None, "guild_count": 0, "guilds": []}
 
 
@@ -57,6 +56,7 @@ async def on_ready():
         "cogs.permissions",
         "cogs.translate",
         "cogs.analytics",
+        "cogs.custom_commands",
     ]
 
     for cog in cogs:
@@ -94,6 +94,19 @@ async def on_message(message: discord.Message):
     if message.author == bot.user:
         return
 
+    # Custom command trigger using ! prefix
+    if message.content.startswith("!") and len(message.content) > 1:
+        cmd_name = message.content[1:].strip().lower().split()[0]
+        guild_id = str(message.guild.id) if message.guild else "global"
+        cmd = await database.get_custom_command(cmd_name, guild_id)
+        if not cmd:
+            cmd = await database.get_custom_command(cmd_name, "global")
+        if cmd:
+            await message.reply(cmd["response"])
+            await database.increment_custom_command_usage(cmd["id"])
+            return
+
+    # Respond when mentioned
     if bot.user in message.mentions:
         from cogs.general import ask_ai
         clean_content = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
@@ -173,6 +186,14 @@ def main():
         logger.error("Please enable Message Content Intent in the Discord Developer Portal")
     except Exception as e:
         logger.error(f"Failed to start bot: {e}")
+
+
+# EXPORT BOT INSTANCE FOR PLUGINS AND API
+_bot_instance = bot
+
+def get_bot():
+    """Get the bot instance from anywhere"""
+    return _bot_instance
 
 
 if __name__ == "__main__":

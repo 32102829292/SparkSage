@@ -85,13 +85,23 @@ async def init_db():
             PRIMARY KEY (command_name, guild_id, role_id)
         );
 
+        CREATE TABLE IF NOT EXISTS custom_commands (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id     TEXT NOT NULL DEFAULT 'global',
+            name         TEXT NOT NULL,
+            response     TEXT NOT NULL,
+            description  TEXT NOT NULL DEFAULT 'A custom command',
+            enabled      INTEGER NOT NULL DEFAULT 1,
+            times_used   INTEGER NOT NULL DEFAULT 0,
+            created_by   TEXT,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(guild_id, name)
+        );
+
         INSERT OR IGNORE INTO wizard_state (id) VALUES (1);
         """
     )
     await db.commit()
-
-
-# --- Config helpers ---
 
 
 async def get_config(key: str, default: str | None = None) -> str | None:
@@ -128,7 +138,6 @@ async def set_config_bulk(data: dict[str, str]):
 
 async def sync_env_to_db():
     import config as cfg
-
     env_keys = {
         "DISCORD_TOKEN": cfg.DISCORD_TOKEN or "",
         "AI_PROVIDER": cfg.AI_PROVIDER,
@@ -148,28 +157,20 @@ async def sync_env_to_db():
     }
     db = await get_db()
     for key, value in env_keys.items():
-        await db.execute(
-            "INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)",
-            (key, value),
-        )
+        await db.execute("INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)", (key, value))
     await db.commit()
 
 
 async def sync_db_to_env():
     from dotenv import dotenv_values, set_key
-
     env_path = os.path.join(os.path.dirname(__file__), ".env")
     existing = dotenv_values(env_path)
     all_config = await get_all_config()
-
     for key, value in all_config.items():
         if value and value.strip():
             set_key(env_path, key, value)
         elif key not in existing:
             set_key(env_path, key, value)
-
-
-# --- Conversation helpers ---
 
 
 async def add_message(channel_id: str, role: str, content: str, provider: str | None = None):
@@ -211,9 +212,6 @@ async def list_channels() -> list[dict]:
     return [dict(row) for row in rows]
 
 
-# --- Wizard helpers ---
-
-
 async def get_wizard_state() -> dict:
     db = await get_db()
     cursor = await db.execute("SELECT completed, current_step, data FROM wizard_state WHERE id = 1")
@@ -243,9 +241,6 @@ async def set_wizard_state(completed: bool | None = None, current_step: int | No
         await db.commit()
 
 
-# --- Session helpers ---
-
-
 async def create_session(token: str, user_id: str, expires_at: str):
     db = await get_db()
     await db.execute(
@@ -271,15 +266,10 @@ async def delete_session(token: str):
     await db.commit()
 
 
-# --- FAQ helpers ---
-
-
 async def get_faqs(guild_id: str | None = None) -> list[dict]:
     db = await get_db()
     if guild_id:
-        cursor = await db.execute(
-            "SELECT * FROM faqs WHERE guild_id = ? ORDER BY id DESC", (guild_id,)
-        )
+        cursor = await db.execute("SELECT * FROM faqs WHERE guild_id = ? ORDER BY id DESC", (guild_id,))
     else:
         cursor = await db.execute("SELECT * FROM faqs ORDER BY id DESC")
     rows = await cursor.fetchall()
@@ -306,9 +296,6 @@ async def increment_faq_usage(faq_id: int):
     db = await get_db()
     await db.execute("UPDATE faqs SET times_used = times_used + 1 WHERE id = ?", (faq_id,))
     await db.commit()
-
-
-# --- Permission helpers ---
 
 
 async def get_permissions() -> list[dict]:
@@ -346,12 +333,73 @@ async def get_command_roles(command_name: str, guild_id: str) -> list[str]:
     return [row["role_id"] for row in rows]
 
 
-# --- Analytics cost helpers ---
+async def get_custom_commands(guild_id: str | None = None) -> list[dict]:
+    db = await get_db()
+    if guild_id:
+        cursor = await db.execute(
+            "SELECT * FROM custom_commands WHERE guild_id = ? ORDER BY name ASC", (guild_id,)
+        )
+    else:
+        cursor = await db.execute("SELECT * FROM custom_commands ORDER BY name ASC")
+    rows = await cursor.fetchall()
+    return [dict(row) for row in rows]
+
+
+async def get_custom_command(name: str, guild_id: str = "global") -> dict | None:
+    db = await get_db()
+    cursor = await db.execute(
+        "SELECT * FROM custom_commands WHERE name = ? AND guild_id = ? AND enabled = 1",
+        (name, guild_id),
+    )
+    row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def create_custom_command(name: str, response: str, description: str = "A custom command", guild_id: str = "global", created_by: str | None = None) -> int:
+    db = await get_db()
+    cursor = await db.execute(
+        "INSERT INTO custom_commands (guild_id, name, response, description, created_by) VALUES (?, ?, ?, ?, ?)",
+        (guild_id, name.lower().strip(), response, description, created_by),
+    )
+    await db.commit()
+    return cursor.lastrowid
+
+
+async def update_custom_command(command_id: int, response: str, description: str) -> bool:
+    db = await get_db()
+    await db.execute(
+        "UPDATE custom_commands SET response = ?, description = ? WHERE id = ?",
+        (response, description, command_id),
+    )
+    await db.commit()
+    return True
+
+
+async def toggle_custom_command(command_id: int, enabled: bool):
+    db = await get_db()
+    await db.execute(
+        "UPDATE custom_commands SET enabled = ? WHERE id = ?",
+        (int(enabled), command_id),
+    )
+    await db.commit()
+
+
+async def delete_custom_command(command_id: int):
+    db = await get_db()
+    await db.execute("DELETE FROM custom_commands WHERE id = ?", (command_id,))
+    await db.commit()
+
+
+async def increment_custom_command_usage(command_id: int):
+    db = await get_db()
+    await db.execute(
+        "UPDATE custom_commands SET times_used = times_used + 1 WHERE id = ?", (command_id,)
+    )
+    await db.commit()
 
 
 async def get_cost_summary(period: str = "30d") -> dict:
     db = await get_db()
-
     if period == "7d":
         since = "datetime('now', '-7 days')"
     elif period == "all":
@@ -365,12 +413,10 @@ async def get_cost_summary(period: str = "30d") -> dict:
             COALESCE(SUM(estimated_cost), 0) as total_cost,
             COALESCE(SUM(input_tokens), 0) as total_input_tokens,
             COALESCE(SUM(output_tokens), 0) as total_output_tokens
-        FROM analytics
-        WHERE created_at >= {since}
+        FROM analytics WHERE created_at >= {since}
         """
     )
-    row = await cursor.fetchone()
-    totals = dict(row)
+    totals = dict(await cursor.fetchone())
 
     cursor = await db.execute(
         f"""
@@ -380,26 +426,19 @@ async def get_cost_summary(period: str = "30d") -> dict:
                COALESCE(SUM(output_tokens), 0) as output_tokens
         FROM analytics
         WHERE created_at >= {since} AND provider IS NOT NULL
-        GROUP BY provider
-        ORDER BY cost DESC
+        GROUP BY provider ORDER BY cost DESC
         """
     )
-    rows = await cursor.fetchall()
-    by_provider = [dict(r) for r in rows]
+    by_provider = [dict(r) for r in await cursor.fetchall()]
 
     cursor = await db.execute(
         f"""
-        SELECT DATE(created_at) as date,
-               COALESCE(SUM(estimated_cost), 0) as cost
-        FROM analytics
-        WHERE created_at >= {since}
-        GROUP BY DATE(created_at)
-        ORDER BY date ASC
+        SELECT DATE(created_at) as date, COALESCE(SUM(estimated_cost), 0) as cost
+        FROM analytics WHERE created_at >= {since}
+        GROUP BY DATE(created_at) ORDER BY date ASC
         """
     )
-    rows = await cursor.fetchall()
-    daily = [dict(r) for r in rows]
-
+    daily = [dict(r) for r in await cursor.fetchall()]
     projected = (totals["total_cost"] / max(len(daily), 1)) * 30 if daily else 0
 
     return {
@@ -412,17 +451,11 @@ async def get_cost_summary(period: str = "30d") -> dict:
     }
 
 
-# --- Stats helper ---
-
-
 async def get_total_messages() -> int:
     db = await get_db()
     cursor = await db.execute("SELECT COUNT(*) as count FROM conversations")
     row = await cursor.fetchone()
     return row["count"] if row else 0
-
-
-# --- Close ---
 
 
 async def close_db():
