@@ -17,6 +17,7 @@ from api.routes import (
     moderation,
     channel_prompts,
     channel_providers,
+    rate_limits,
 )
 import db
 
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(moderation.router,      prefix="/api/moderation",      tags=["moderation"])
     app.include_router(channel_prompts.router, prefix="/api/channel-prompts", tags=["channel-prompts"])
     app.include_router(channel_providers.router, prefix="/api/channel-providers", tags=["channel-providers"])
+    app.include_router(rate_limits.router, prefix="/api/rate-limits", tags=["rate-limits"])
     @app.get("/api/health")
     async def health():
         return {"status": "ok"}

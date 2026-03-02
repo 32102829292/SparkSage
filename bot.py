@@ -61,6 +61,7 @@ async def on_ready():
         "cogs.moderation",
         "cogs.channel_prompts",
         "cogs.channel_providers",
+        "cogs.rate_limits",
     ]
 
     for cog in cogs:

@@ -37,6 +37,11 @@ SYSTEM_PROMPT = os.getenv(
     "Be concise, helpful, and engaging.",
 )
 
+# Rate Limiting Settings
+RATE_LIMIT_USER = int(os.getenv("RATE_LIMIT_USER", "20"))  # requests per minute per user
+RATE_LIMIT_GUILD = int(os.getenv("RATE_LIMIT_GUILD", "200"))  # requests per minute per guild
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # window in seconds
+
 # Dashboard settings
 DATABASE_PATH = os.getenv("DATABASE_PATH", "sparksage.db")
 DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", "8000"))
@@ -114,6 +119,9 @@ def reload_from_db(db_config: dict[str, str]):
         "BOT_PREFIX": str,
         "MAX_TOKENS": int,
         "SYSTEM_PROMPT": str,
+        "RATE_LIMIT_USER": int,      # Added
+        "RATE_LIMIT_GUILD": int,     # Added
+        "RATE_LIMIT_WINDOW": int,    # Added
         "ADMIN_PASSWORD": str,
         "DISCORD_CLIENT_ID": str,
         "DISCORD_CLIENT_SECRET": str,
