@@ -68,11 +68,11 @@ export default function CostPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Cost Tracking</h1>
+        <h1 className="text-2xl font-bold text-foreground">Cost Tracking</h1>
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
-          className="border rounded-lg px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="bg-background text-foreground border border-input rounded-lg px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="7d">Last 7 days</option>
           <option value="30d">Last 30 days</option>
@@ -84,10 +84,11 @@ export default function CostPage() {
         <p className="text-muted-foreground">Loading cost data...</p>
       ) : error ? (
         <Card>
-          <CardContent className="py-12 text-center text-red-500">{error}</CardContent>
+          <CardContent className="py-12 text-center text-destructive">{error}</CardContent>
         </Card>
       ) : stats ? (
         <>
+          {/* Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: "Total Cost", value: fmt(stats.total_cost) },
@@ -98,29 +99,57 @@ export default function CostPage() {
               <Card key={label}>
                 <CardContent className="pt-5">
                   <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-2xl font-bold">{value}</p>
+                  <p className="text-2xl font-bold text-foreground">{value}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
 
+          {/* Daily Cost Chart */}
           {stats.daily.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Daily Cost</CardTitle>
+                <CardTitle className="text-sm text-foreground font-medium">
+                  Daily Cost
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={stats.daily}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Number(v).toFixed(3)}`} />
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Tooltip formatter={(v: any) => [`$${Number(v).toFixed(4)}`, "Cost"]} />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="hsl(var(--border))" 
+                    />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                    />
+                    <YAxis 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                      tickFormatter={(v) => `$${Number(v).toFixed(3)}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))',
+                        borderColor: 'hsl(var(--border))',
+                        color: 'hsl(var(--foreground))',
+                        borderRadius: '0.5rem'
+                      }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      formatter={(v: any) => [`$${Number(v).toFixed(4)}`, "Cost"]}
+                    />
                     <Line
                       type="monotone"
                       dataKey="cost"
-                      stroke="#6366f1"
+                      stroke="hsl(var(--primary))"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -130,30 +159,63 @@ export default function CostPage() {
             </Card>
           )}
 
+          {/* Cost by Provider */}
           {stats.by_provider.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Cost by Provider</CardTitle>
+                <CardTitle className="text-sm text-foreground font-medium">
+                  Cost by Provider
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={stats.by_provider}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Number(v).toFixed(3)}`} />
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Tooltip formatter={(v: any) => [`$${Number(v).toFixed(4)}`, "Cost"]} />
-                    <Bar dataKey="cost" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="hsl(var(--border))" 
+                    />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                    />
+                    <YAxis 
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: 'hsl(var(--foreground))'
+                      }}
+                      stroke="hsl(var(--border))"
+                      tickFormatter={(v) => `$${Number(v).toFixed(3)}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))',
+                        borderColor: 'hsl(var(--border))',
+                        color: 'hsl(var(--foreground))',
+                        borderRadius: '0.5rem'
+                      }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      formatter={(v: any) => [`$${Number(v).toFixed(4)}`, "Cost"]}
+                    />
+                    <Bar 
+                      dataKey="cost" 
+                      fill="hsl(var(--chart-2))" 
+                      radius={[4, 4, 0, 0]} 
+                    />
                   </BarChart>
                 </ResponsiveContainer>
 
+                {/* Provider Details Table */}
                 <div className="mt-4 space-y-2">
                   {stats.by_provider.map((p) => (
                     <div key={p.name} className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{p.name}</span>
-                      <div className="flex gap-6 text-muted-foreground text-xs">
-                        <span>{p.input_tokens.toLocaleString()} in</span>
-                        <span>{p.output_tokens.toLocaleString()} out</span>
+                      <span className="font-medium text-foreground">{p.name}</span>
+                      <div className="flex gap-6 text-xs">
+                        <span className="text-muted-foreground">{p.input_tokens.toLocaleString()} in</span>
+                        <span className="text-muted-foreground">{p.output_tokens.toLocaleString()} out</span>
                         <span className="font-medium text-foreground">{fmt(p.cost)}</span>
                       </div>
                     </div>
